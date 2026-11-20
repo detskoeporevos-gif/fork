@@ -876,6 +876,36 @@ void IdleState::OnUpdate(CCSBot *me)
 	}
 	}
 
+	// Coordinated team tactics on bomb defusal maps
+	if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB && TheCSBots()->GetZoneCount() > 0 && !me->IsRogue())
+	{
+		int roundTargetZone = CSGameRules()->m_iTotalRoundsPlayed % TheCSBots()->GetZoneCount();
+		const CCSBotManager::Zone *zone = TheCSBots()->GetZone(roundTargetZone);
+
+		if (zone)
+		{
+			if (me->m_iTeam == TERRORIST && !TheCSBots()->IsBombPlanted())
+			{
+				// Coordinate T push onto the same bombsite instead of scattering randomly
+				if (RANDOM_FLOAT(0.0f, 100.0f) < 75.0f)
+				{
+					me->SetTask(CCSBot::SEEK_AND_DESTROY);
+					me->SetDisposition(CCSBot::OPPORTUNITY_FIRE);
+					me->MoveTo(&zone->m_center, FASTEST_ROUTE);
+					return;
+				}
+			}
+			else if (me->m_iTeam == CT && TheCSBots()->IsBombPlanted())
+			{
+				// Retake: move toward bombsite even if we haven't heard the bomb yet
+				me->SetTask(CCSBot::DEFUSE_BOMB);
+				me->SetDisposition(CCSBot::OPPORTUNITY_FIRE);
+				me->MoveTo(&zone->m_center, FASTEST_ROUTE);
+				return;
+			}
+		}
+	}
+
 	// if we have nothing special to do, go hunting for enemies
 	me->Hunt();
 }

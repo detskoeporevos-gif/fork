@@ -529,7 +529,10 @@ void AttackState::OnUpdate(CCSBot *me)
 			while (!m_firstDodge && next == m_dodgeState);
 
 			m_dodgeState = (DodgeStateType)next;
-			m_nextDodgeStateTimestamp = gpGlobals->time + RANDOM_FLOAT(0.3f, 1.0f);
+			if (me->IsUsingRifle() && me->GetProfile()->GetSkill() > 0.6f)
+				m_nextDodgeStateTimestamp = gpGlobals->time + RANDOM_FLOAT(0.18f, 0.35f);
+			else
+				m_nextDodgeStateTimestamp = gpGlobals->time + RANDOM_FLOAT(0.3f, 0.8f);
 			m_firstDodge = false;
 		}
 
@@ -551,9 +554,14 @@ void AttackState::OnUpdate(CCSBot *me)
 		}
 		case JUMP:
 		{
-			if (me->m_isEnemyVisible)
+			// Avoid jumping mid-gunfight with rifles/snipers as it ruins accuracy
+			if (me->m_isEnemyVisible && !me->IsUsingRifle() && !me->IsUsingSniperRifle())
 			{
 				me->Jump();
+			}
+			else
+			{
+				me->StrafeLeft();
 			}
 			break;
 		}

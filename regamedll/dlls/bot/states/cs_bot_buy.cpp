@@ -59,45 +59,45 @@ void BuyState::OnEnter(CCSBot *me)
 
 	m_buyDefuseKit = false;
 	m_buyShield = false;
+	m_buyGrenade = false;
+	m_buyPistol = false;
+
+	// Smart economy check: full buy, force/half buy, or eco
+	const int fullBuyThreshold = (me->m_iTeam == CT) ? 4100 : 3700;
+	const bool isFullBuy = (me->m_iAccount >= fullBuyThreshold) || me->m_bHasPrimary;
+	const bool isEco = (!me->m_bHasPrimary && me->m_iAccount < 2000);
 
 	if (me->m_iTeam == CT)
 	{
-		if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB)
+		if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB && !CSGameRules()->IsCareer())
 		{
-			// CT's sometimes buy defuse kits in the bomb scenario (except in career mode, where the player should defuse)
-			if (!CSGameRules()->IsCareer())
+			if (isFullBuy && me->m_iAccount >= 200)
 			{
-				const float buyDefuseKitChance = 50.0f;	// 100.0f * (me->GetProfile()->GetSkill() + 0.2f);
-				if (RANDOM_FLOAT(0.0f, 100.0f) < buyDefuseKitChance)
-				{
-					m_buyDefuseKit = true;
-				}
+				m_buyDefuseKit = true;
+			}
+			else if (!isEco && me->m_iAccount >= 2400 && RANDOM_FLOAT(0.0f, 100.0f) < 80.0f)
+			{
+				m_buyDefuseKit = true;
 			}
 		}
 
-		// determine if we want a tactical shield
-		if (!me->m_bHasPrimary && TheCSBots()->AllowTacticalShield())
+		// Only consider tactical shield on force buys when rifles/SMGs aren't preferred
+		if (!me->m_bHasPrimary && !isEco && !isFullBuy && TheCSBots()->AllowTacticalShield())
 		{
-			if (me->m_iAccount > 2500)
+			if (me->m_iAccount > 2500 && RANDOM_FLOAT(0.0f, 100.0f) < 10.0f)
 			{
-				if (me->m_iAccount < 4000)
-					m_buyShield = (RANDOM_FLOAT(0, 100.0f) < 33.3f) ? true : false;
-				else
-					m_buyShield = (RANDOM_FLOAT(0, 100.0f) < 10.0f) ? true : false;
+				m_buyShield = true;
 			}
 		}
 	}
 
-	if (TheCSBots()->AllowGrenades())
+	if (TheCSBots()->AllowGrenades() && !isEco)
 	{
-		m_buyGrenade = (RANDOM_FLOAT(0.0f, 100.0f) < 33.3f) ? true : false;
+		if (isFullBuy)
+			m_buyGrenade = true;
+		else
+			m_buyGrenade = (RANDOM_FLOAT(0.0f, 100.0f) < 60.0f);
 	}
-	else
-	{
-		m_buyGrenade = false;
-	}
-
-	m_buyPistol = false;
 
 	if (TheCSBots()->AllowPistols())
 	{

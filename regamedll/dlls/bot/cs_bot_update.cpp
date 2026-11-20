@@ -117,6 +117,15 @@ void CCSBot::Upkeep()
 			Vector idealAngle = UTIL_VecToAngles(toEnemy);
 
 			idealAngle.x = 360.0 - idealAngle.x;
+
+			// Recoil compensation based on bot skill
+			float recoilComp = GetProfile()->GetSkill();
+			if (recoilComp > 0.2f)
+			{
+				idealAngle.x -= pev->punchangle.x * 2.0f * recoilComp;
+				idealAngle.y -= pev->punchangle.y * 2.0f * recoilComp;
+			}
+
 			SetLookAngles(idealAngle.y, idealAngle.x);
 		}
 	}
@@ -790,6 +799,29 @@ void CCSBot::Update()
 	{
 		ResetStuckMonitor();
 		ClearMovement();
+	}
+
+	// Situational bunnyhop: only when rotating/escaping/hunting fast out of combat
+	if (!IsAttacking() && !m_isEnemyVisible && !IsCrouching() && !IsUsingLadder()
+		&& !IsReloading() && !m_isWaitingToTossGrenade
+		&& GetProfile()->GetSkill() > 0.5f)
+	{
+		TaskType task = GetTask();
+		if (task == ESCAPE_FROM_BOMB || task == HUNT || task == SEEK_AND_DESTROY || task == DEFUSE_BOMB || task == PLANT_BOMB)
+		{
+			if ((pev->flags & FL_ONGROUND) && pev->velocity.Length2D() > 215.0f)
+			{
+				Jump();
+			}
+			else if (!(pev->flags & FL_ONGROUND) && pev->velocity.Length2D() > 200.0f)
+			{
+				// Air-strafe during bunnyhop to maintain/gain speed
+				if (int(gpGlobals->time * 3.0f) % 2 == 0)
+					StrafeLeft();
+				else
+					StrafeRight();
+			}
+		}
 	}
 
 	// if we get too far ahead of the hostages we are escorting, wait for them
